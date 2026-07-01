@@ -1,10 +1,13 @@
 import type { Request, Response, NextFunction } from "express";
+import multer from "multer";
 import {
   ActualizarEstadoSchema,
   CrearProcesoSchema,
   RecomendacionFinancieraSchema,
 } from "./procesos.schema.js";
 import * as procesosService from "./procesos.service.js";
+
+export const uploadMiddleware = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 export async function listar(req: Request, res: Response, next: NextFunction) {
   try {
@@ -46,6 +49,18 @@ export async function eliminar(req: Request, res: Response, next: NextFunction) 
   try {
     await procesosService.eliminarProceso(req.params.id);
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function subirArchivo(req: Request, res: Response, next: NextFunction) {
+  try {
+    const proceso = await procesosService.obtenerProceso(req.params.id);
+    if (!proceso) return res.status(404).json({ error: "Proceso no encontrado" });
+    if (!req.file) return res.status(400).json({ error: "No se recibió ningún archivo" });
+    await procesosService.guardarArchivoSubido(proceso.idProceso, req.file.originalname, req.file.buffer);
+    res.status(201).json({ nombre: req.file.originalname });
   } catch (err) {
     next(err);
   }

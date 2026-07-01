@@ -7,3 +7,4 @@ dashboard/backend/public/
 *.db-journal
 *.db-shm
 *.db-wal
+uploads/
