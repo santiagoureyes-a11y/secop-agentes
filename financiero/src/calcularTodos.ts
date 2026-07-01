@@ -148,7 +148,8 @@ for (const proc of procesos) {
     await actualizarDashboard(
       proc.dbId,
       Math.round(evaluacion.valorRecomendado),
-      Math.round(evaluacion.margenSobreCostoPct * 10000) / 100,
+      // Guardamos como decimal (0.138, no 13.8) — la UI multiplica por 100 para mostrar %.
+      Math.round(evaluacion.margenSobreCostoPct * 10000) / 10000,
       evaluacion.riesgo
     );
     console.log(`✅ Dashboard actualizado`);

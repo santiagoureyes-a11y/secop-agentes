@@ -107,25 +107,79 @@ export function ProcesoDetail({ id, onCerrar }: ProcesoDetailProps) {
         </section>
       )}
 
-      {proceso.estado === "cotizado" && (
+      {proceso.estado === "cotizado" && proceso.valorSugerido !== null && (
         <section className="space-y-3 border-t border-zinc-100 pt-4">
-          <h3 className="text-sm font-semibold text-zinc-700">Recomendación del Financiero</h3>
-          <dl className="grid grid-cols-2 gap-2 text-sm">
-            <dt className="text-zinc-400">Sugerido cotizar</dt>
-            <dd>{formatearMoneda(proceso.valorSugerido)}</dd>
-            <dt className="text-zinc-400">Margen esperado</dt>
-            <dd>{proceso.margenEsperado !== null ? `${(proceso.margenEsperado * 100).toFixed(0)}%` : "—"}</dd>
-            <dt className="text-zinc-400">Riesgo</dt>
-            <dd>{proceso.riesgo ?? "—"}</dd>
-          </dl>
-          <div className="flex gap-2">
-            <button
-              onClick={() => cambiarEstado("aprobado_radicar")}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              Aprobar para radicar
-            </button>
-          </div>
+          <h3 className="text-sm font-semibold text-zinc-700">Análisis financiero</h3>
+          {(() => {
+            const propuesta = proceso.valorSugerido!;
+            const margen = proceso.margenEsperado ?? 0;
+            // costo = propuesta / (1 + margen)  →  ganancia = propuesta - costo
+            const costo = margen > 0 ? propuesta / (1 + margen) : propuesta;
+            const ganancia = propuesta - costo;
+            const pctDesc = proceso.valorBase
+              ? ((1 - propuesta / proceso.valorBase) * 100).toFixed(1)
+              : null;
+
+            const colorGanancia =
+              ganancia < 500_000
+                ? "text-red-600 font-semibold"
+                : ganancia < 2_000_000
+                ? "text-amber-600 font-semibold"
+                : "text-emerald-700 font-semibold";
+
+            const badgeRiesgo =
+              proceso.riesgo === "alto"
+                ? "bg-red-100 text-red-700"
+                : proceso.riesgo === "medio"
+                ? "bg-amber-100 text-amber-700"
+                : "bg-emerald-100 text-emerald-700";
+
+            return (
+              <>
+                <dl className="grid grid-cols-2 gap-y-2 text-sm">
+                  <dt className="text-zinc-400">Presupuesto oficial</dt>
+                  <dd>{formatearMoneda(proceso.valorBase)}</dd>
+
+                  <dt className="text-zinc-400">Propuesta a radicar</dt>
+                  <dd className="font-medium">{formatearMoneda(propuesta)}</dd>
+
+                  <dt className="text-zinc-400">Descuento sobre presupuesto</dt>
+                  <dd>{pctDesc ? `${pctDesc}%` : "—"}</dd>
+
+                  <dt className="text-zinc-400">Costo estimado Verde Ecológico</dt>
+                  <dd>{formatearMoneda(Math.round(costo))}</dd>
+
+                  <dt className="text-zinc-400">Ganancia estimada</dt>
+                  <dd className={colorGanancia}>{formatearMoneda(Math.round(ganancia))}</dd>
+
+                  <dt className="text-zinc-400">Margen sobre costo</dt>
+                  <dd>{margen > 0 ? `${(margen * 100).toFixed(1)}%` : "—"}</dd>
+
+                  <dt className="text-zinc-400">Riesgo</dt>
+                  <dd>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeRiesgo}`}>
+                      {proceso.riesgo?.toUpperCase() ?? "—"}
+                    </span>
+                  </dd>
+                </dl>
+
+                {ganancia < 500_000 && (
+                  <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                    ⚠ Ganancia muy baja ({formatearMoneda(Math.round(ganancia))}). Evalúa si conviene participar.
+                  </p>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => cambiarEstado("aprobado_radicar")}
+                    className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                  >
+                    Aprobar para radicar
+                  </button>
+                </div>
+              </>
+            );
+          })()}
         </section>
       )}
 
