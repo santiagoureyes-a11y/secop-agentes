@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dashboard/backend/public/
+.env
+*.log
+*.db
+*.db-journal
+*.db-shm
+*.db-wal

@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Razón social que se presenta a los procesos (puede haber varias compitiendo en paralelo).
+// Deliberadamente NO tiene campo de contraseña/credenciales de SECOP: esas viven solo en
+// variables de entorno o un gestor de secretos, nunca en esta base de datos.
+model Empresa {
+  id        String    @id @default(cuid())
+  nombre    String
+  nit       String    @unique
+  createdAt DateTime  @default(now())
+  procesos  Proceso[]
+}
+
+// Estados válidos (controlados por Zod en el backend, no por enum nativo
+// para mantener portabilidad entre SQLite y Postgres):
+// por_revisar | aprobado_cotizar | descartado | cotizado | aprobado_radicar
+// | radicado | en_evaluacion | adjudicado | rechazado
+model Proceso {
+  id              String              @id @default(cuid())
+  idProceso       String              @unique
+  entidad         String
+  objeto          String
+  valorBase       Float?
+  modalidad       String?
+  fechaCierre     DateTime?
+  urlProceso      String?
+  estado          String              @default("por_revisar")
+  valorSugerido   Float?
+  margenEsperado  Float?
+  riesgo          String?
+  // Resumen del pliego/estudio previo (experiencia exigida, perfiles profesionales, alcance,
+  // plazo) — extraído por el Agente Documental de los PDFs reales del proceso, para que el
+  // humano tenga contexto completo al aprobar, sin tener que abrir el pliego él mismo.
+  resumenPliego   String?
+  empresaId       String?
+  empresa         Empresa?            @relation(fields: [empresaId], references: [id])
+  documentos      DocumentoProceso[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+// Referencia a los documentos generados/cargados para un proceso (carta de presentación,
+// oferta económica, anexos, garantía). Solo guarda la ruta del archivo en
+// ~/secop-documentos/<nit>/... — nunca el archivo en sí, igual que las credenciales de SECOP
+// nunca viven en esta base de datos.
+model DocumentoProceso {
+  id          String   @id @default(cuid())
+  procesoId   String
+  proceso     Proceso  @relation(fields: [procesoId], references: [id])
+  tipo        String   // carta_presentacion | oferta_economica | anexo_tecnico | garantia | otro
+  rutaArchivo String
+  estado      String   @default("generado") // generado | cargado | confirmado
+  createdAt   DateTime @default(now())
+}

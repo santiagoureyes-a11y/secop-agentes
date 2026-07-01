@@ -1,0 +1,19 @@
+{
+  "name": "secop-sesion-asistida",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p .",
+    "iniciar-sesion": "tsx src/iniciarSesion.ts",
+    "leer-proceso": "tsx src/leerProceso.ts"
+  },
+  "dependencies": {
+    "playwright": "^1.47.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4",
+    "@types/node": "^20.14.10"
+  }
+}
