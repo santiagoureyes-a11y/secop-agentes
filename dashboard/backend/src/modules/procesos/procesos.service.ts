@@ -35,9 +35,11 @@ export function crearProceso(datos: CrearProcesoInput) {
 
 export async function actualizarEstado(id: string, datos: ActualizarEstadoInput) {
   const proceso = await prisma.proceso.update({ where: { id }, data: { estado: datos.estado } });
-  // Gate 2: aviso (no aprobación) cuando los documentos ya están listos para radicar.
+  // Gate 2: aviso (no aprobación) — best effort, no bloquea si el SMTP falla.
   if (datos.estado === "aprobado_radicar") {
-    await notificarListoParaPublicar(proceso);
+    notificarListoParaPublicar(proceso).catch((err) =>
+      console.warn("[email] No se pudo enviar aviso de radicación:", (err as Error).message)
+    );
   }
   return proceso;
 }
@@ -111,7 +113,9 @@ export async function guardarRecomendacionFinanciera(id: string, datos: Recomend
     where: { id },
     data: { ...datos, estado: "cotizado" },
   });
-  // Gate 1: aviso (no aprobación) con el costeo y la ganancia esperada.
-  await notificarCostoYGanancia(proceso);
+  // Gate 1: aviso (no aprobación) — best effort, no bloquea si el SMTP falla.
+  notificarCostoYGanancia(proceso).catch((err) =>
+    console.warn("[email] No se pudo enviar aviso de costeo:", (err as Error).message)
+  );
   return proceso;
 }

@@ -1,7 +1,7 @@
 import { documentosFaltantesOVencidos, leerManifiesto } from "./manifest.js";
 import { generarDocumentosProceso } from "./generarDocumentos.js";
 
-const NIT_VERDE_ECOLOGICO = "900000001-1";
+const NIT_VERDE_ECOLOGICO = "900520676-4";
 
 const manifiesto = leerManifiesto(NIT_VERDE_ECOLOGICO);
 const faltantes = documentosFaltantesOVencidos(manifiesto);

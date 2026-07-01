@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p .",
+    "start": "tsx src/index.ts",
     "iniciar-sesion": "tsx src/iniciarSesion.ts",
     "leer-proceso": "tsx src/leerProceso.ts"
   },

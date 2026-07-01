@@ -15,7 +15,7 @@ export interface ResumenPliego {
   descargados: string[];
 }
 
-const PATRON_DOCUMENTOS_RELEVANTES = /estudio previo|invitacion/i;
+const PATRON_DOCUMENTOS_RELEVANTES = /estudio.{0,8}prev|invitaci|pliego/i;
 
 async function subirArchivo(procesoDbId: string, rutaLocal: string) {
   const nombre = path.basename(rutaLocal);
