@@ -9,3 +9,5 @@ procesosRouter.post("/", procesosController.crear);
 procesosRouter.patch("/:id/estado", procesosController.actualizarEstado);
 procesosRouter.patch("/:id/recomendacion-financiera", procesosController.guardarRecomendacionFinanciera);
 procesosRouter.delete("/:id", procesosController.eliminar);
+procesosRouter.get("/:id/archivos", procesosController.listarArchivos);
+procesosRouter.get("/:id/archivos/:filename", procesosController.servirArchivo);

@@ -6,6 +6,9 @@ import type {
 } from "./procesos.schema.js";
 import { z } from "zod";
 import { notificarCostoYGanancia, notificarListoParaPublicar } from "./procesos.notificaciones.js";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 
 type CrearProcesoInput = z.infer<typeof CrearProcesoSchema>;
 type ActualizarEstadoInput = z.infer<typeof ActualizarEstadoSchema>;
@@ -41,6 +44,23 @@ export async function actualizarEstado(id: string, datos: ActualizarEstadoInput)
 
 export function eliminarProceso(id: string) {
   return prisma.proceso.delete({ where: { id } });
+}
+
+export async function listarArchivosDescargados(id: string) {
+  const proceso = await prisma.proceso.findUnique({ where: { id }, include: { empresa: true } });
+  if (!proceso?.empresa) return [];
+  const dir = path.join(os.homedir(), "secop-documentos", proceso.empresa.nit, "descargados", proceso.idProceso);
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir)
+    .filter((f) => !f.startsWith("."))
+    .map((nombre) => ({ nombre, url: `/api/procesos/${id}/archivos/${encodeURIComponent(nombre)}` }));
+}
+
+export async function rutaArchivoDescargado(id: string, filename: string) {
+  const proceso = await prisma.proceso.findUnique({ where: { id }, include: { empresa: true } });
+  if (!proceso?.empresa) return null;
+  const ruta = path.join(os.homedir(), "secop-documentos", proceso.empresa.nit, "descargados", proceso.idProceso, filename);
+  return fs.existsSync(ruta) ? ruta : null;
 }
 
 export async function guardarRecomendacionFinanciera(id: string, datos: RecomendacionFinancieraInput) {

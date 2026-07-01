@@ -1,4 +1,4 @@
-import { useProceso, useActualizarEstado } from "../hooks/useProcesos";
+import { useProceso, useActualizarEstado, useArchivosDescargados } from "../hooks/useProcesos";
 import { ETIQUETAS_TIPO_DOCUMENTO, TIPOS_DOCUMENTO, type TipoDocumento } from "../../../types/proceso";
 
 function formatearMoneda(valor: number | null) {
@@ -13,6 +13,7 @@ interface ProcesoDetailProps {
 
 export function ProcesoDetail({ id, onCerrar }: ProcesoDetailProps) {
   const { data: proceso, isLoading } = useProceso(id);
+  const { data: archivos = [] } = useArchivosDescargados(id);
   const actualizarEstado = useActualizarEstado();
 
   if (isLoading || !proceso) return <p className="text-zinc-400">Cargando proceso...</p>;
@@ -55,11 +56,32 @@ export function ProcesoDetail({ id, onCerrar }: ProcesoDetailProps) {
         )}
       </section>
 
+      {archivos.length > 0 && (
+        <section className="border-t border-zinc-100 pt-4">
+          <h3 className="mb-2 text-sm font-semibold text-zinc-700">Documentos del pliego</h3>
+          <ul className="space-y-1">
+            {archivos.map((archivo) => (
+              <li key={archivo.nombre}>
+                <a
+                  href={archivo.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"
+                >
+                  <span>📄</span>
+                  <span>{archivo.nombre}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {proceso.resumenPliego && (
         <section className="border-t border-zinc-100 pt-4">
           <details>
             <summary className="cursor-pointer text-sm font-semibold text-zinc-700">
-              Resumen del pliego (experiencia, perfiles, plazo, alcance) — para aprobar con contexto completo
+              Resumen del pliego (experiencia, perfiles, plazo, alcance)
             </summary>
             <pre className="mt-2 max-h-96 overflow-y-auto whitespace-pre-wrap rounded-md bg-zinc-50 p-3 text-xs text-zinc-700">
               {proceso.resumenPliego}
@@ -109,7 +131,7 @@ export function ProcesoDetail({ id, onCerrar }: ProcesoDetailProps) {
 
       {(proceso.estado === "cotizado" || proceso.estado === "aprobado_radicar") && (
         <section className="space-y-2 border-t border-zinc-100 pt-4 text-sm">
-          <h3 className="font-semibold text-zinc-700">Documentos</h3>
+          <h3 className="font-semibold text-zinc-700">Documentos de la oferta</h3>
           <ul className="space-y-1">
             {TIPOS_DOCUMENTO.map((tipo) => {
               const doc = proceso.documentos.find((d) => d.tipo === tipo);

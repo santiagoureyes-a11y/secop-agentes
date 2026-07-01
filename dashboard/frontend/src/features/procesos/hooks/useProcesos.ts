@@ -16,6 +16,14 @@ export function useProceso(id: string | null) {
   });
 }
 
+export function useArchivosDescargados(id: string | null) {
+  return useQuery({
+    queryKey: [...PROCESOS_KEY, id, "archivos"],
+    queryFn: () => procesosApi.listarArchivosDescargados(id!),
+    enabled: Boolean(id),
+  });
+}
+
 export function useActualizarEstado() {
   const queryClient = useQueryClient();
   return useMutation({

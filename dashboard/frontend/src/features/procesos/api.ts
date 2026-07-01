@@ -17,6 +17,14 @@ export function obtenerProceso(id: string): Promise<Proceso> {
   return fetch(`${API_URL}/api/procesos/${id}`).then(manejarRespuesta<Proceso>);
 }
 
+export function listarArchivosDescargados(id: string): Promise<{ nombre: string; url: string }[]> {
+  return fetch(`${API_URL}/api/procesos/${id}/archivos`).then(manejarRespuesta);
+}
+
+export function urlArchivoDescargado(id: string, nombre: string): string {
+  return `${API_URL}/api/procesos/${id}/archivos/${encodeURIComponent(nombre)}`;
+}
+
 export function actualizarEstadoProceso(id: string, estado: EstadoProceso): Promise<Proceso> {
   return fetch(`${API_URL}/api/procesos/${id}/estado`, {
     method: "PATCH",
