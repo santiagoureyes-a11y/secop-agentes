@@ -18,7 +18,7 @@ export function obtenerProceso(id: string): Promise<Proceso> {
 }
 
 export function listarArchivosDescargados(id: string): Promise<{ nombre: string; url: string }[]> {
-  return fetch(`${API_URL}/api/procesos/${id}/archivos`).then(manejarRespuesta);
+  return fetch(`${API_URL}/api/procesos/${id}/archivos`).then(manejarRespuesta<{ nombre: string; url: string }[]>);
 }
 
 export function urlArchivoDescargado(id: string, nombre: string): string {
