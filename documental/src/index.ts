@@ -22,7 +22,7 @@ if (faltantes.length === 0) {
 // Ejemplo de calibración: mismos datos del proceso real CO1.REQ.10532988 y el resultado del
 // Agente Financiero ya verificado en la sesión anterior.
 const { cartaPresentacion, ofertaEconomica } = generarDocumentosProceso(
-  { nombre: manifiesto.empresa.nombre, nit: manifiesto.empresa.nit },
+  { nombre: manifiesto.empresa.nombre, nit: manifiesto.empresa.nit, representanteLegal: manifiesto.empresa.representanteLegal },
   {
     idProceso: "CO1.REQ.10532988",
     entidad: "CENTRAL ADMINISTRATIVA ESPECIALIZADA INGENIEROS CENAC INGENIEROS",

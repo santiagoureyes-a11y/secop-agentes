@@ -4,14 +4,18 @@ import os from "node:os";
 import { z } from "zod";
 
 const DocumentoSchema = z.object({
-  archivo: z.string().nullable(),
-  vigenciaHasta: z.string().nullable(),
+  archivo: z.string().nullish(),
+  vigenciaHasta: z.string().nullish(),
 });
 
 const ManifiestoSchema = z.object({
-  empresa: z.object({ nombre: z.string(), nit: z.string() }),
+  empresa: z.object({
+    nombre: z.string(),
+    nit: z.string(),
+    representanteLegal: z.string().optional(),
+  }),
   documentos: z.record(z.string(), DocumentoSchema),
-  hojasDeVidaEquipo: z.array(z.unknown()),
+  hojasDeVidaEquipo: z.array(z.unknown()).optional().default([]),
 });
 
 export type Manifiesto = z.infer<typeof ManifiestoSchema>;
