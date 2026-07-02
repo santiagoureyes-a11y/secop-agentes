@@ -103,7 +103,7 @@ function App() {
                 Haz clic en cualquier fila para ver detalles, analizar y aprobar
               </p>
             </div>
-            <ProcesosTable procesos={procesos} onSeleccionar={setSeleccionado} />
+            <ProcesosTable procesos={activos} onSeleccionar={setSeleccionado} />
           </div>
         )}
       </main>

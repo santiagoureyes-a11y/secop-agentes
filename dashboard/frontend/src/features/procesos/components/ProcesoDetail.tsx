@@ -1,10 +1,98 @@
 import { useProceso, useActualizarEstado, useArchivosDescargados } from "../hooks/useProcesos";
-import { ETIQUETAS_TIPO_DOCUMENTO, TIPOS_DOCUMENTO, type TipoDocumento, type Proceso } from "../../../types/proceso";
+import { ETIQUETAS_TIPO_DOCUMENTO, TIPOS_DOCUMENTO, type TipoDocumento, type Proceso, type EstadoProceso } from "../../../types/proceso";
 
 function fmt(valor: number | null) {
   if (valor === null) return "—";
   return valor.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 }
+
+// ── Pipeline timeline ─────────────────────────────────────────────────────────
+
+const PASOS_PIPELINE = [
+  { label: "Revisión", estados: ["por_revisar", "aprobado_cotizar"] as EstadoProceso[] },
+  { label: "Cotización", estados: ["cotizado"] as EstadoProceso[] },
+  { label: "Radicación", estados: ["aprobado_radicar", "radicado"] as EstadoProceso[] },
+  { label: "Evaluación", estados: ["en_evaluacion"] as EstadoProceso[] },
+  { label: "Resultado", estados: ["adjudicado", "rechazado", "descartado"] as EstadoProceso[] },
+];
+
+function pasoActual(estado: EstadoProceso): number {
+  return PASOS_PIPELINE.findIndex((p) => p.estados.includes(estado));
+}
+
+function PipelineTimeline({ estado }: { estado: EstadoProceso }) {
+  const actual = pasoActual(estado);
+  const esTerminal = estado === "rechazado" || estado === "descartado";
+  const esExito = estado === "adjudicado";
+
+  return (
+    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+      <div className="flex items-center gap-0">
+        {PASOS_PIPELINE.map((paso, i) => {
+          const completado = i < actual;
+          const esteEsActual = i === actual;
+          const futuro = i > actual;
+
+          let circuloClase = "";
+          let label = "";
+
+          if (completado) {
+            circuloClase = "bg-slate-400 text-white";
+            label = "✓";
+          } else if (esteEsActual && esTerminal) {
+            circuloClase = "bg-red-500 text-white";
+            label = "×";
+          } else if (esteEsActual && esExito) {
+            circuloClase = "bg-emerald-500 text-white";
+            label = "✓";
+          } else if (esteEsActual) {
+            circuloClase = "bg-indigo-600 text-white ring-4 ring-indigo-100";
+            label = String(i + 1);
+          } else {
+            circuloClase = "bg-slate-200 text-slate-400";
+            label = String(i + 1);
+          }
+
+          return (
+            <div key={paso.label} className="flex items-center flex-1 last:flex-none">
+              <div className="flex flex-col items-center gap-1">
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${circuloClase}`}
+                >
+                  {label}
+                </div>
+                <span
+                  className={`text-[10px] font-medium whitespace-nowrap ${
+                    esteEsActual && esTerminal
+                      ? "text-red-500"
+                      : esteEsActual
+                      ? "text-indigo-600"
+                      : completado
+                      ? "text-slate-500"
+                      : futuro
+                      ? "text-slate-300"
+                      : "text-slate-400"
+                  }`}
+                >
+                  {paso.label}
+                </span>
+              </div>
+              {i < PASOS_PIPELINE.length - 1 && (
+                <div
+                  className={`h-0.5 flex-1 mx-1 mb-4 rounded-full ${
+                    completado ? "bg-slate-400" : "bg-slate-200"
+                  }`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 
 interface ProcesoDetailProps {
   id: string;
@@ -53,6 +141,9 @@ export function ProcesoDetail({ id, onCerrar }: ProcesoDetailProps) {
             </div>
           )}
         </div>
+
+        {/* Timeline de progreso */}
+        {!isLoading && proceso && <PipelineTimeline estado={proceso.estado} />}
 
         {/* Cuerpo del panel */}
         {!isLoading && proceso && (
@@ -131,22 +222,46 @@ export function ProcesoDetail({ id, onCerrar }: ProcesoDetailProps) {
                     Aprobar y cotizar
                   </button>
                   <button
-                    onClick={() => cambiarEstado("descartado")}
-                    className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                    onClick={() => cambiarEstado("rechazado")}
+                    className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
                   >
-                    Descartar
+                    Rechazar
                   </button>
                 </div>
               </Section>
             )}
 
+            {proceso.estado === "aprobado_cotizar" && (
+              <Section title="En espera de cotización">
+                <p className="text-sm text-slate-500 mb-3">
+                  El agente financiero está calculando la propuesta. Puedes rechazar si decidís no participar.
+                </p>
+                <button
+                  onClick={() => cambiarEstado("rechazado")}
+                  className="w-full rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                >
+                  Rechazar proceso
+                </button>
+              </Section>
+            )}
+
             {proceso.estado === "cotizado" && proceso.valorSugerido !== null && (
-              <button
-                onClick={() => cambiarEstado("aprobado_radicar")}
-                className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
-              >
-                Aprobar para radicar
-              </button>
+              <Section title="Acción requerida">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => cambiarEstado("aprobado_radicar")}
+                    className="flex-1 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+                  >
+                    Aprobar para radicar
+                  </button>
+                  <button
+                    onClick={() => cambiarEstado("rechazado")}
+                    className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                  >
+                    Rechazar
+                  </button>
+                </div>
+              </Section>
             )}
 
             {/* Checklist documentos de oferta */}

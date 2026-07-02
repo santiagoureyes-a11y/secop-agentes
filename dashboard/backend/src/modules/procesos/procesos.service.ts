@@ -25,7 +25,11 @@ export function obtenerProceso(id: string) {
   return prisma.proceso.findUnique({ where: { id }, include: { empresa: true, documentos: true } });
 }
 
-export function crearProceso(datos: CrearProcesoInput) {
+export async function crearProceso(datos: CrearProcesoInput) {
+  const existente = await prisma.proceso.findUnique({ where: { idProceso: datos.idProceso } });
+  if (existente && (existente.estado === "rechazado" || existente.estado === "descartado")) {
+    return null;
+  }
   return prisma.proceso.upsert({
     where: { idProceso: datos.idProceso },
     update: datos,

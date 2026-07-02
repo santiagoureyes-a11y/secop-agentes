@@ -11,6 +11,14 @@ function diasRestantes(fecha: string | null): number | null {
   return Math.ceil((new Date(fecha).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
+function calcularGanancia(proceso: Proceso): number | null {
+  if (!proceso.valorSugerido || !proceso.margenEsperado) return null;
+  const costo = proceso.margenEsperado > 0
+    ? proceso.valorSugerido / (1 + proceso.margenEsperado)
+    : proceso.valorSugerido;
+  return proceso.valorSugerido - costo;
+}
+
 function DiasCell({ fecha }: { fecha: string | null }) {
   const dias = diasRestantes(fecha);
   if (dias === null) return <span className="text-slate-300">—</span>;
@@ -46,6 +54,7 @@ export function ProcesosTable({ procesos, onSeleccionar }: ProcesosTableProps) {
             <th className="px-6 py-3">Objeto</th>
             <th className="px-6 py-3 text-right">Presupuesto</th>
             <th className="px-6 py-3 text-right">Propuesta</th>
+            <th className="px-6 py-3 text-right">Ganancia</th>
             <th className="px-6 py-3 text-center">Cierre</th>
             <th className="px-6 py-3"></th>
           </tr>
@@ -54,6 +63,7 @@ export function ProcesosTable({ procesos, onSeleccionar }: ProcesosTableProps) {
           {procesos.map((proceso) => {
             const dias = diasRestantes(proceso.fechaCierre);
             const esUrgente = dias !== null && dias >= 0 && dias <= 3;
+            const ganancia = calcularGanancia(proceso);
 
             return (
               <tr
@@ -84,8 +94,21 @@ export function ProcesosTable({ procesos, onSeleccionar }: ProcesosTableProps) {
                 </td>
                 <td className="px-6 py-4 text-right tabular-nums">
                   {proceso.valorSugerido ? (
-                    <span className="font-semibold text-emerald-700">
+                    <span className="font-semibold text-slate-800">
                       {formatearMoneda(proceso.valorSugerido)}
+                    </span>
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-right tabular-nums">
+                  {ganancia !== null ? (
+                    <span
+                      className={`font-bold ${
+                        ganancia <= 500_000 ? "text-red-600" : "text-emerald-700"
+                      }`}
+                    >
+                      {formatearMoneda(Math.round(ganancia))}
                     </span>
                   ) : (
                     <span className="text-slate-300">—</span>
@@ -111,9 +134,9 @@ export function ProcesosTable({ procesos, onSeleccionar }: ProcesosTableProps) {
           })}
           {procesos.length === 0 && (
             <tr>
-              <td colSpan={7} className="py-16 text-center text-slate-400">
+              <td colSpan={8} className="py-16 text-center text-slate-400">
                 <div className="text-3xl mb-2">🔍</div>
-                <p className="text-sm font-medium">No hay procesos todavía</p>
+                <p className="text-sm font-medium">No hay procesos activos</p>
                 <p className="text-xs mt-1">El Agente Scout los irá agregando aquí</p>
               </td>
             </tr>

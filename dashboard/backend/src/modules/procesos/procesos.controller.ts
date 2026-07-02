@@ -30,7 +30,9 @@ export async function obtener(req: Request, res: Response, next: NextFunction) {
 export async function crear(req: Request, res: Response, next: NextFunction) {
   try {
     const datos = CrearProcesoSchema.parse(req.body);
-    res.status(201).json(await procesosService.crearProceso(datos));
+    const resultado = await procesosService.crearProceso(datos);
+    if (!resultado) return res.status(409).json({ error: "Proceso rechazado/descartado — se ignora" });
+    res.status(201).json(resultado);
   } catch (err) {
     next(err);
   }
