@@ -63,6 +63,51 @@ export function eliminarProceso(id: string) {
   return prisma.proceso.delete({ where: { id } });
 }
 
+const ESTADOS_PRE_RADICACION = ["por_revisar", "aprobado_cotizar", "cotizado", "aprobado_radicar"];
+const ESTADOS_TERMINALES = ["descartado", "rechazado", "adjudicado"];
+const CUPO_MAXIMO = Number(process.env.MAX_PROCESOS_ACTIVOS ?? 30);
+
+// Depura el tablero para que no se convierta en "un SECOP 2.0": descarta los procesos sin
+// radicar a los que les queda menos de 1 día para el cierre (ya no hay tiempo de preparar
+// garantía/CCB/documentos) y reporta el cupo disponible para que el Scout no exceda el
+// máximo de procesos activos. El Scout la llama antes de insertar en cada corrida diaria.
+export async function depurarProcesos() {
+  const candidatos = await prisma.proceso.findMany({
+    where: { estado: { in: ESTADOS_PRE_RADICACION }, fechaCierre: { not: null } },
+  });
+
+  // Umbral: cierre a menos de 1 día. Con hora confirmada se compara el instante real;
+  // sin confirmar solo se conoce el día (00:00 UTC de Datos Abiertos), así que se compara
+  // el día calendario en Bogotá: cierre <= mañana ⇒ podría cerrar en cualquier momento
+  // de mañana a primera hora, o sea, queda menos de 1 día completo garantizado.
+  const ahora = Date.now();
+  const MS_DIA = 24 * 60 * 60 * 1000;
+  const maniana = new Date(ahora + MS_DIA).toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+
+  const vencidos = candidatos.filter((p) => {
+    if (p.horaCierreConfirmada) return p.fechaCierre!.getTime() - ahora < MS_DIA;
+    return p.fechaCierre!.toISOString().slice(0, 10) <= maniana;
+  });
+
+  for (const proceso of vencidos) {
+    await prisma.proceso.update({
+      where: { id: proceso.id },
+      data: {
+        estado: "descartado",
+        motivoDescarte: proceso.estado === "por_revisar" ? "vencido sin aprobar" : "cerró sin radicar",
+      },
+    });
+  }
+
+  const activos = await prisma.proceso.count({ where: { estado: { notIn: ESTADOS_TERMINALES } } });
+  return {
+    descartados: vencidos.length,
+    activos,
+    cupoMaximo: CUPO_MAXIMO,
+    cupoDisponible: Math.max(0, CUPO_MAXIMO - activos),
+  };
+}
+
 const uploadsDir = process.env.UPLOADS_DIR ?? path.join(process.cwd(), "uploads");
 
 function dirUploads(idProceso: string) {

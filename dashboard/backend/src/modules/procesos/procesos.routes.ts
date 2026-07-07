@@ -7,6 +7,7 @@ export const procesosRouter = Router();
 procesosRouter.get("/", procesosController.listar);
 procesosRouter.get("/:id", procesosController.obtener);
 procesosRouter.post("/", procesosController.crear);
+procesosRouter.post("/depurar", procesosController.depurar);
 procesosRouter.patch("/:id/estado", procesosController.actualizarEstado);
 procesosRouter.patch("/:id/recomendacion-financiera", procesosController.guardarRecomendacionFinanciera);
 procesosRouter.patch("/:id/fecha-cierre", procesosController.actualizarFechaCierre);

@@ -59,6 +59,8 @@ export interface Proceso {
   horaCierreConfirmada: boolean;
   urlProceso: string | null;
   estado: EstadoProceso;
+  // Presente cuando el descarte fue automático (depuración por cierre inminente).
+  motivoDescarte: string | null;
   valorSugerido: number | null;
   margenEsperado: number | null;
   riesgo: string | null;

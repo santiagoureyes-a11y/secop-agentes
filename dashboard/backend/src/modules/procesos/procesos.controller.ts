@@ -87,6 +87,14 @@ export async function servirArchivo(req: Request, res: Response, next: NextFunct
   }
 }
 
+export async function depurar(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.json(await procesosService.depurarProcesos());
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function actualizarFechaCierre(req: Request, res: Response, next: NextFunction) {
   try {
     const datos = FechaCierreSchema.parse(req.body);

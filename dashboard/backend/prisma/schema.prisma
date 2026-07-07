@@ -36,6 +36,9 @@ model Proceso {
   horaCierreConfirmada Boolean @default(false)
   urlProceso      String?
   estado          String              @default("por_revisar")
+  // Por qué se descartó (ej. "vencido sin aprobar" por la depuración automática) —
+  // distingue el descarte del humano en el dashboard del descarte por limpieza.
+  motivoDescarte  String?
   valorSugerido   Float?
   margenEsperado  Float?
   riesgo          String?

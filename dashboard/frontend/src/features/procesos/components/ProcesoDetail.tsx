@@ -167,6 +167,13 @@ export function ProcesoDetail({ id, onCerrar }: ProcesoDetailProps) {
               </a>
             )}
 
+            {/* Motivo de descarte automático */}
+            {proceso.estado === "descartado" && proceso.motivoDescarte && (
+              <p className="rounded-lg bg-zinc-50 border border-zinc-200 px-3 py-2 text-xs text-zinc-500">
+                Descartado automáticamente: {proceso.motivoDescarte}
+              </p>
+            )}
+
             {/* Documentos del pliego */}
             {archivos.length > 0 && (
               <Section title="Documentos del pliego">

@@ -38,20 +38,52 @@ async function enviarAlDashboard(proceso: Proceso): Promise<boolean> {
   return res.ok;
 }
 
-const procesos = await buscarProcesos(perfilVerdeEcologico, { limite: 20 });
+// Depurar primero: el dashboard descarta los procesos sin radicar con cierre a <1 día
+// y devuelve el cupo disponible (máximo de procesos activos — que el tablero no se
+// convierta en un SECOP 2.0).
+const resDepurar = await fetch(`${DASHBOARD_URL}/api/procesos/depurar`, { method: "POST" });
+if (!resDepurar.ok) {
+  throw new Error(`No se pudo depurar el dashboard: ${resDepurar.status}`);
+}
+const depuracion = (await resDepurar.json()) as {
+  descartados: number;
+  activos: number;
+  cupoMaximo: number;
+  cupoDisponible: number;
+};
+console.log(
+  `Depuración: ${depuracion.descartados} descartados por cierre inminente · ` +
+    `activos ${depuracion.activos}/${depuracion.cupoMaximo} · cupo disponible ${depuracion.cupoDisponible}`
+);
+
+const procesos = await buscarProcesos(perfilVerdeEcologico, { limite: 50 });
 console.log(`Procesos encontrados: ${procesos.length}`);
+
+// Con más candidatos que cupo, entran primero los de mayor presupuesto oficial.
+procesos.sort((a, b) => parseFloat(b.precio_base ?? "0") - parseFloat(a.precio_base ?? "0"));
 
 let enviados = 0;
 let duplicados = 0;
+let sinCupo = 0;
 for (const p of procesos) {
+  if (enviados >= depuracion.cupoDisponible) {
+    sinCupo++;
+    continue;
+  }
   const ok = await enviarAlDashboard(p);
   if (ok) {
     enviados++;
     console.log(`  ✓ [${p.id_del_proceso}] ${p.nombre_del_procedimiento?.slice(0, 60)}`);
   } else {
     duplicados++;
-    console.log(`  · [${p.id_del_proceso}] ya existe en el dashboard`);
+    console.log(`  · [${p.id_del_proceso}] ya existe en el dashboard (o fue descartado antes)`);
   }
 }
 
 console.log(`\nResumen: ${enviados} nuevos, ${duplicados} ya existían.`);
+if (sinCupo > 0) {
+  console.log(
+    `Sin cupo (${depuracion.cupoMaximo} activos máx.) — quedaron ${sinCupo} candidatos por fuera; ` +
+      `entrarán en próximas corridas si sigue habiendo margen de cierre.`
+  );
+}

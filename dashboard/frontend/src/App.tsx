@@ -60,8 +60,8 @@ function App() {
           <StatCard
             icon="📋"
             title="Procesos activos"
-            value={activos.length.toString()}
-            sub="en seguimiento"
+            value={`${activos.length} / 30`}
+            sub="cupo del tablero"
           />
           <StatCard
             icon="💰"

@@ -255,6 +255,14 @@ API SODA: `https://www.datos.gov.co/resource/<dataset-id>.json` con parámetros 
       bancaria, parafiscales, estados financieros, renta y firma escaneada de Álvaro Páez) se copiaron de
       `~/Documents` a `~/secop-documentos/900520676-4/empresa/` y el manifest.json ya apunta a ellos.
       Siguen pendientes: firma digital electrónica (.p12) y hoja de vida Función Pública.
+- [x] **Operación autónoma del Scout (2026-07-07)** — decisiones del usuario: máximo **30 procesos
+      activos** en el dashboard (env `MAX_PROCESOS_ACTIVOS`, entran primero los de mayor presupuesto)
+      y **auto-descarte** de todo proceso sin radicar con cierre a <1 día (motivo en
+      `Proceso.motivoDescarte`: "vencido sin aprobar" / "cerró sin radicar" — sin timeout arbitrario
+      de días). Implementado en `POST /api/procesos/depurar` (el Scout lo llama antes de insertar).
+      Rutina en la nube (skill /schedule) corre el Scout **todos los días 9:00 AM Bogotá** — clona el
+      repo y ejecuta `scout/`, sin secretos. La captura de hora de cierre sigue siendo local
+      (`sesion-asistida`, Chrome con sesión SECOP).
 - [ ] Abstracción para replicar a otras empresas (solo después de validar con la empresa propia).
 - [x] Preparado para despliegue permanente (2026-06-27): backend sirve el build del frontend,
       Postgres en vez de SQLite, `package.json` raíz con build/start, guía paso a paso en
