@@ -22,28 +22,32 @@ export async function iniciarSesion(empresa: EmpresaSesion) {
   const contexto = await abrirContextoPersistente(empresa);
   const page = contexto.pages()[0] ?? (await contexto.newPage());
 
-  await page.goto(SECOP_LOGIN_URL);
+  await page.goto(SECOP_LOGIN_URL, { waitUntil: "domcontentloaded", timeout: 45_000 });
 
-  // Si la cookie de sesión sigue vigente, SECOP la valida en segundo plano y redirige
-  // automáticamente lejos del login — pero el retraso es variable (de ~2s a 25s+, confirmado
-  // empíricamente) e independiente de cuándo intentemos llenar el formulario. En vez de
-  // adivinar el tiempo exacto, se intenta llenar y si el auto-redirect interrumpe a mitad de
-  // camino (elemento desmontado), se interpreta como "ya estaba logueado" en vez de fallar.
-  const yaLogueadoAlEntrar = !page.url().includes("/STS/Users/Login");
-  if (yaLogueadoAlEntrar) {
+  // Si la sesión persiste, SECOP redirige automáticamente lejos del login en 2-25s.
+  // Esperamos hasta 20s a que esa redirección ocurra; si no, necesitamos hacer login manual.
+  const seSalio = await page
+    .waitForURL((url) => !url.toString().includes("/STS/Users/Login"), { timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (seSalio) {
     console.log("Sesión ya activa (perfil persistente) — no fue necesario volver a loguearse.");
     return contexto;
   }
 
   try {
-    await page.fill(SELECTOR_USUARIO, usuario, { timeout: 15_000 });
-    await page.fill(SELECTOR_PASSWORD, password, { timeout: 15_000 });
-    await page.click(SELECTOR_BOTON_LOGIN, { timeout: 15_000 });
+    await page.fill(SELECTOR_USUARIO, usuario, { timeout: 10_000 });
+    await page.fill(SELECTOR_PASSWORD, password, { timeout: 10_000 });
+    await page.click(SELECTOR_BOTON_LOGIN, { timeout: 10_000 });
   } catch (err) {
-    if (!page.url().includes("/STS/Users/Login")) {
-      console.log(
-        "El auto-redirect de sesión interrumpió el llenado del formulario, pero ya estamos fuera del login — se interpreta como sesión válida."
-      );
+    // Si durante el fill el redirect ocurrió, la URL ya no es login → sesión válida
+    const fueraDLogin = await page
+      .waitForURL((url) => !url.toString().includes("/STS/Users/Login"), { timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (fueraDLogin) {
+      console.log("El auto-redirect interrumpió el fill — sesión activa detectada.");
       return contexto;
     }
     throw err;
