@@ -6,9 +6,43 @@ function formatearMoneda(valor: number | null) {
   return valor.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 }
 
-function diasRestantes(fecha: string | null): number | null {
+const MS_DIA = 1000 * 60 * 60 * 24;
+
+// Cuando la hora de cierre NO está confirmada, la fecha guardada es solo el día (00:00 UTC
+// desde Datos Abiertos): se compara el día calendario del cierre contra el día calendario
+// actual en Bogotá — comparar instantes daría un día menos (00:00 UTC = 7 p. m. en Bogotá).
+function diasCalendarioRestantes(fecha: string): number {
+  const cierre = fecha.slice(0, 10);
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+  return Math.round((Date.parse(cierre) - Date.parse(hoy)) / MS_DIA);
+}
+
+// Días (o fracción) hasta el cierre. Con hora confirmada es tiempo real restante;
+// sin confirmar, días de calendario. Negativo = ya cerró.
+function diasRestantes(fecha: string | null, horaConfirmada: boolean): number | null {
   if (!fecha) return null;
-  return Math.ceil((new Date(fecha).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  if (horaConfirmada) return (new Date(fecha).getTime() - Date.now()) / MS_DIA;
+  return diasCalendarioRestantes(fecha);
+}
+
+function formatearCierre(fecha: string, horaConfirmada: boolean): string {
+  if (!horaConfirmada) {
+    // Solo se conoce el día — formatear la parte de fecha tal cual, sin convertir zona.
+    const [anio, mes, dia] = fecha.slice(0, 10).split("-").map(Number);
+    return new Date(Date.UTC(anio, mes - 1, dia, 12)).toLocaleDateString("es-CO", {
+      timeZone: "UTC",
+      day: "numeric",
+      month: "short",
+    });
+  }
+  return new Date(fecha).toLocaleString("es-CO", {
+    timeZone: "America/Bogota",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 function calcularGanancia(proceso: Proceso): number | null {
@@ -19,23 +53,52 @@ function calcularGanancia(proceso: Proceso): number | null {
   return proceso.valorSugerido - costo;
 }
 
-function DiasCell({ fecha }: { fecha: string | null }) {
-  const dias = diasRestantes(fecha);
-  if (dias === null) return <span className="text-slate-300">—</span>;
-  if (dias < 0) return <span className="text-slate-400 text-xs italic">Cerrado</span>;
-  if (dias <= 1)
+function DiasCell({ fecha, horaConfirmada }: { fecha: string | null; horaConfirmada: boolean }) {
+  const dias = diasRestantes(fecha, horaConfirmada);
+  if (fecha === null || dias === null) return <span className="text-slate-300">—</span>;
+
+  // Etiqueta de tiempo restante: horas exactas si la hora es conocida y falta poco.
+  let restante: string;
+  if (horaConfirmada && dias < 2) {
+    restante = dias * 24 < 1 ? `${Math.max(0, Math.floor(dias * 24 * 60))} min` : `${Math.floor(dias * 24)} h`;
+  } else {
+    restante = horaConfirmada ? `${Math.floor(dias)}d` : dias === 0 ? "hoy" : `${dias}d`;
+  }
+
+  const detalle = (
+    <p className="mt-1 text-[11px] leading-tight text-slate-400 whitespace-nowrap">
+      {formatearCierre(fecha, horaConfirmada)}
+      {!horaConfirmada && <span className="block italic text-slate-300">hora por confirmar</span>}
+    </p>
+  );
+
+  if (dias < 0)
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
-        {dias}d ⚠
-      </span>
+      <div>
+        <span className="text-slate-400 text-xs italic">Cerrado</span>
+        {detalle}
+      </div>
     );
-  if (dias <= 3)
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-        {dias}d
-      </span>
-    );
-  return <span className="text-xs text-slate-500">{dias}d</span>;
+
+  const badge =
+    dias <= 1
+      ? "bg-red-100 text-red-700"
+      : dias <= 3
+      ? "bg-amber-100 text-amber-700"
+      : "";
+
+  return (
+    <div>
+      {badge ? (
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${badge}`}>
+          {restante} {dias <= 1 && "⚠"}
+        </span>
+      ) : (
+        <span className="text-xs text-slate-500">{restante}</span>
+      )}
+      {detalle}
+    </div>
+  );
 }
 
 interface ProcesosTableProps {
@@ -61,7 +124,7 @@ export function ProcesosTable({ procesos, onSeleccionar }: ProcesosTableProps) {
         </thead>
         <tbody className="divide-y divide-slate-100">
           {procesos.map((proceso) => {
-            const dias = diasRestantes(proceso.fechaCierre);
+            const dias = diasRestantes(proceso.fechaCierre, proceso.horaCierreConfirmada);
             const esUrgente = dias !== null && dias >= 0 && dias <= 3;
             const ganancia = calcularGanancia(proceso);
 
@@ -115,7 +178,7 @@ export function ProcesosTable({ procesos, onSeleccionar }: ProcesosTableProps) {
                   )}
                 </td>
                 <td className="px-6 py-4 text-center">
-                  <DiasCell fecha={proceso.fechaCierre} />
+                  <DiasCell fecha={proceso.fechaCierre} horaConfirmada={proceso.horaCierreConfirmada} />
                 </td>
                 <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                   {proceso.urlProceso ? (

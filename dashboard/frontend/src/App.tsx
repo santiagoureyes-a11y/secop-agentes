@@ -9,9 +9,12 @@ function formatM(valor: number) {
   return `$${valor}`;
 }
 
+// Días de calendario (en Bogotá) hasta el cierre — la fecha de Datos Abiertos trae la hora
+// truncada a 00:00 UTC, así que se compara solo el día para no correrse un día hacia atrás.
 function diasParaCierre(fecha: string | null): number | null {
   if (!fecha) return null;
-  return Math.ceil((new Date(fecha).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+  return Math.round((Date.parse(fecha.slice(0, 10)) - Date.parse(hoy)) / (1000 * 60 * 60 * 24));
 }
 
 function App() {

@@ -9,6 +9,12 @@ function escaparLiteral(valor: string): string {
   return valor.replace(/'/g, "''");
 }
 
+// Fecha YYYY-MM-DD en zona horaria de Colombia, desplazada N días hacia adelante.
+function fechaBogota(diasAdelante: number): string {
+  const fecha = new Date(Date.now() + diasAdelante * 24 * 60 * 60 * 1000);
+  return fecha.toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+}
+
 function buildWhereClause(perfil: PerfilEmpresa): string {
   const condiciones: string[] = [];
 
@@ -78,9 +84,12 @@ function buildWhereClause(perfil: PerfilEmpresa): string {
   if (perfil.soloVigentes !== false) {
     // Excluye procesos ya adjudicados o cuyo plazo de recepción de ofertas ya pasó —
     // sin esto, el Scout puede traer procesos donde ya no se puede participar.
-    const hoy = new Date().toISOString().slice(0, 10);
+    // La fecha se calcula en zona horaria de Bogotá (las fechas del dataset son locales
+    // de Colombia; toISOString() daría el día siguiente después de las 7 p. m.).
+    const margenDias = perfil.diasMinimosAntesCierre ?? 0;
+    const minCierre = fechaBogota(margenDias > 0 ? margenDias + 1 : 0);
     condiciones.push(`adjudicado = 'No'`);
-    condiciones.push(`fecha_de_recepcion_de >= '${hoy}'`);
+    condiciones.push(`fecha_de_recepcion_de >= '${minCierre}'`);
   }
 
   return condiciones.join(" AND ");

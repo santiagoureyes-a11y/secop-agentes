@@ -56,4 +56,9 @@ export interface PerfilEmpresa {
   // Si es true (default), excluye procesos ya adjudicados o cuya fecha de recepción de
   // respuestas ya pasó — evita mostrar candidatos en los que ya no se puede ofertar.
   soloVigentes?: boolean;
+  // Días completos que deben faltar para el cierre al momento del triage. Datos Abiertos
+  // trunca la hora de cierre a las 00:00, así que un proceso que cierra "el día D" puede
+  // cerrar a primera hora de D; para garantizar N días completos se exige que la fecha de
+  // cierre sea >= hoy + N + 1 (en fecha de Bogotá). Solo aplica con soloVigentes.
+  diasMinimosAntesCierre?: number;
 }

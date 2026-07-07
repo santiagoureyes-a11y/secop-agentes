@@ -9,6 +9,7 @@ procesosRouter.get("/:id", procesosController.obtener);
 procesosRouter.post("/", procesosController.crear);
 procesosRouter.patch("/:id/estado", procesosController.actualizarEstado);
 procesosRouter.patch("/:id/recomendacion-financiera", procesosController.guardarRecomendacionFinanciera);
+procesosRouter.patch("/:id/fecha-cierre", procesosController.actualizarFechaCierre);
 procesosRouter.delete("/:id", procesosController.eliminar);
 procesosRouter.get("/:id/archivos", procesosController.listarArchivos);
 procesosRouter.post("/:id/archivos", uploadMiddleware.single("archivo"), procesosController.subirArchivo);

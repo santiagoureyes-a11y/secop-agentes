@@ -54,6 +54,9 @@ export interface Proceso {
   valorBase: number | null;
   modalidad: string | null;
   fechaCierre: string | null;
+  // true cuando sesion-asistida capturó la hora real desde la página del proceso en SECOP II;
+  // false cuando la fecha viene de Datos Abiertos (que trunca la hora a las 00:00).
+  horaCierreConfirmada: boolean;
   urlProceso: string | null;
   estado: EstadoProceso;
   valorSugerido: number | null;

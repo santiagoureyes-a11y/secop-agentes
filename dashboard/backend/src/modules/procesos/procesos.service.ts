@@ -30,10 +30,21 @@ export async function crearProceso(datos: CrearProcesoInput) {
   if (existente && (existente.estado === "rechazado" || existente.estado === "descartado")) {
     return null;
   }
+  // Si sesion-asistida ya confirmó la hora exacta de cierre, el Scout (que solo trae el día,
+  // con hora 00:00 desde Datos Abiertos) no debe pisarla en sus corridas siguientes.
+  const update: Partial<CrearProcesoInput> = { ...datos };
+  if (existente?.horaCierreConfirmada) delete update.fechaCierre;
   return prisma.proceso.upsert({
     where: { idProceso: datos.idProceso },
-    update: datos,
+    update,
     create: datos,
+  });
+}
+
+export function actualizarFechaCierre(id: string, fechaCierre: Date) {
+  return prisma.proceso.update({
+    where: { id },
+    data: { fechaCierre, horaCierreConfirmada: true },
   });
 }
 

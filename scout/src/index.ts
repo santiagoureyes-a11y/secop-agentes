@@ -12,6 +12,9 @@ const perfilVerdeEcologico: PerfilEmpresa = {
   precioMaximo: 200_000_000,
   diasPublicacionMax: 30,
   soloVigentes: true,
+  // Pedido del gerente (2026-07-07): solo procesos con al menos 1 día completo antes del
+  // cierre — sin tiempo de preparar garantía, CCB y experiencia no vale la pena entrarlos.
+  diasMinimosAntesCierre: 1,
 };
 
 async function enviarAlDashboard(proceso: Proceso): Promise<boolean> {

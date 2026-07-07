@@ -30,6 +30,10 @@ model Proceso {
   valorBase       Float?
   modalidad       String?
   fechaCierre     DateTime?
+  // Datos Abiertos solo trae el DÍA de cierre (hora truncada a 00:00). La hora real vive en
+  // la página del proceso en SECOP II y la captura sesion-asistida — cuando eso pasa, este
+  // flag queda en true y el Scout ya no pisa fechaCierre en sus corridas siguientes.
+  horaCierreConfirmada Boolean @default(false)
   urlProceso      String?
   estado          String              @default("por_revisar")
   valorSugerido   Float?

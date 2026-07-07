@@ -3,6 +3,7 @@ import multer from "multer";
 import {
   ActualizarEstadoSchema,
   CrearProcesoSchema,
+  FechaCierreSchema,
   RecomendacionFinancieraSchema,
 } from "./procesos.schema.js";
 import * as procesosService from "./procesos.service.js";
@@ -81,6 +82,15 @@ export async function servirArchivo(req: Request, res: Response, next: NextFunct
     const ruta = await procesosService.rutaArchivoDescargado(req.params.id, req.params.filename);
     if (!ruta) return res.status(404).json({ error: "Archivo no encontrado" });
     res.download(ruta, req.params.filename);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function actualizarFechaCierre(req: Request, res: Response, next: NextFunction) {
+  try {
+    const datos = FechaCierreSchema.parse(req.body);
+    res.json(await procesosService.actualizarFechaCierre(req.params.id, datos.fechaCierre));
   } catch (err) {
     next(err);
   }
