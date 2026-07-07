@@ -226,6 +226,35 @@ API SODA: `https://www.datos.gov.co/resource/<dataset-id>.json` con parámetros 
       `postgresql` para el despliegue) porque no hay Postgres local — `prisma db push` en vez de
       `migrate dev` (no hay migraciones formales todavía, solo dev). Cambiar a `postgresql` recién
       antes de desplegar en Railway (ver `docs/despliegue-dashboard.md`, paso 0).
+- [x] **Hora de cierre real + margen mínimo del Scout (2026-07-07)** — pedido del usuario tras el caso
+      Caldas (cierre el mismo día que se intentó radicar):
+      1) Datos Abiertos **trunca la hora de cierre a las 00:00** (verificado contra la API) — la hora real
+         solo está en la página del proceso. Nuevo `sesion-asistida/src/capturarFechaCierre.ts` la extrae
+         del cronograma (patrón de etiqueta "presentación/recepción de ofertas", sin IDs frágiles) y la
+         sube vía `PATCH /api/procesos/:id/fecha-cierre` → campo `horaCierreConfirmada` en `Proceso`.
+         El upsert del Scout NO pisa una fechaCierre ya confirmada. **Pendiente verificar en vivo los
+         selectores del cronograma** (igual que se hizo con la grilla de documentos).
+      2) Scout: nuevo `diasMinimosAntesCierre` (config: 1) — como la hora es desconocida en el triage,
+         exige `fecha_de_recepcion_de >= hoy + N + 1` (fecha de Bogotá) para garantizar N días completos.
+      3) Frontend: columna Cierre muestra fecha y, si está confirmada, hora (con conteo en horas si
+         faltan <48h); si no, "hora por confirmar". Se corrigió además un off-by-one de zona horaria
+         (00:00 UTC = 7 p. m. del día anterior en Bogotá) que marcaba "Cerrado" procesos aún abiertos.
+      **Pendiente al retomar:** correr `npx prisma db push` (bloqueado por permisos en esa sesión) y
+      desplegar a Railway.
+- [x] **Diligenciamiento real de plantillas oficiales (2026-07-07)** — `documental/src/diligenciarPlantillas.ts`
+      (+ `diligenciar.py`, usa python-docx ya instalado en el sistema; justificación en el propio archivo):
+      llena los .docx oficiales del pliego con los datos del manifest en dos pasadas (XML crudo para
+      placeholders dentro de campos de Word + python-docx para los partidos entre runs), **inserta la firma
+      manuscrita escaneada como imagen** antes de la línea de firma, y reporta los placeholders que exigen
+      decisión humana (revisor fiscal, tamaño mipyme, nº de trabajadores, composición accionaria, datos de
+      contacto de la entidad) — esos nunca se autocompletan. Verificado contra las 5 plantillas reales de
+      Caldas (69 campos + firma en todas). Uso:
+      `npm run diligenciar -- <idProceso> <numeroProceso> <entidad> <ciudad> [direccionEntidad]`.
+      Las versiones parciales del 2026-07-02 quedaron en `generados/<id>/obsoletos-parciales/`.
+- [x] **Documentos de empresa conectados (2026-07-07)** — los archivos reales (RUT, CCB, RUP, certificación
+      bancaria, parafiscales, estados financieros, renta y firma escaneada de Álvaro Páez) se copiaron de
+      `~/Documents` a `~/secop-documentos/900520676-4/empresa/` y el manifest.json ya apunta a ellos.
+      Siguen pendientes: firma digital electrónica (.p12) y hoja de vida Función Pública.
 - [ ] Abstracción para replicar a otras empresas (solo después de validar con la empresa propia).
 - [x] Preparado para despliegue permanente (2026-06-27): backend sirve el build del frontend,
       Postgres en vez de SQLite, `package.json` raíz con build/start, guía paso a paso en

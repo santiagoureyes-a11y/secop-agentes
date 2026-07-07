@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p .",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "diligenciar": "tsx src/diligenciarPlantillas.ts"
   },
   "dependencies": {
     "zod": "^3.23.8"
