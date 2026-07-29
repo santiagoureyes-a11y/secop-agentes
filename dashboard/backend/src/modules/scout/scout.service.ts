@@ -18,10 +18,17 @@ const BASE_URL = "https://www.datos.gov.co/resource";
 
 // Perfil de Verde Ecológico — igual al de scout/src/index.ts. Si el negocio cambia de
 // nicho, actualizar en ambos lugares (o, mejor, mover a un JSON compartido).
+//
+// ⚠ Se quitó "palabrasClaveAlguna: [TECNIC, ADMINISTRATIV, CONTABLE]" (2026-07-30): medido
+// contra Datos Abiertos, ese filtro extra descartaba procesos de interventoría reales (ej.
+// interventoría topográfica) sin aportar precisión — el cuello de botella real es que el
+// pool de "Mínima cuantía + interventoría" vigente en todo el país es naturalmente pequeño
+// (1-2 procesos en un día cualquiera, ~41 si se cuentan todas las modalidades). Correr el
+// scout con frecuencia (diario) es lo que acumula volumen real, no ampliar precio/fecha —
+// eso ya se probó contra el dataset real y no cambia el conteo.
 const PERFIL_VERDE_ECOLOGICO = {
   modalidades: ["Mínima cuantía"],
   palabraClaveObligatoria: "INTERVENTOR",
-  palabrasClaveAlguna: ["TECNIC", "ADMINISTRATIV", "CONTABLE"],
   precioMaximo: 200_000_000,
   diasPublicacionMax: 30,
   diasMinimosAntesCierre: 1,
@@ -52,11 +59,6 @@ function buildWhereClause(): string {
   condiciones.push(`(${p.modalidades.map((m) => `modalidad_de_contratacion = '${m}'`).join(" OR ")})`);
   condiciones.push(
     `(upper(nombre_del_procedimiento) like '%${p.palabraClaveObligatoria}%' OR upper(descripci_n_del_procedimiento) like '%${p.palabraClaveObligatoria}%')`
-  );
-  condiciones.push(
-    `(${p.palabrasClaveAlguna
-      .map((palabra) => `(upper(nombre_del_procedimiento) like '%${palabra}%' OR upper(descripci_n_del_procedimiento) like '%${palabra}%')`)
-      .join(" OR ")})`
   );
 
   const desde = new Date(Date.now() - p.diasPublicacionMax * 24 * 60 * 60 * 1000);

@@ -8,7 +8,13 @@ const perfilVerdeEcologico: PerfilEmpresa = {
   codigosUnspsc: [],
   modalidades: ["Mínima cuantía"],
   palabraClaveObligatoria: "INTERVENTOR",
-  palabrasClaveAlguna: ["TECNIC", "ADMINISTRATIV", "CONTABLE"],
+  // ⚠ Se quitó "palabrasClaveAlguna: [TECNIC, ADMINISTRATIV, CONTABLE]" (2026-07-30):
+  // medido contra Datos Abiertos, ese filtro extra descartaba procesos de interventoría
+  // reales (ej. interventoría topográfica) sin aportar precisión — el cuello de botella
+  // real es que el pool de "Mínima cuantía + interventoría" vigente en todo el país es
+  // naturalmente pequeño (1-2 procesos en un día cualquiera, ~41 si se cuentan todas las
+  // modalidades). Correr el scout con frecuencia (diario) es lo que acumula volumen real,
+  // no ampliar precio/fecha — eso ya se probó y no cambia el conteo.
   precioMaximo: 200_000_000,
   diasPublicacionMax: 30,
   soloVigentes: true,
