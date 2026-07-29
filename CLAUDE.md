@@ -55,10 +55,11 @@ debe estar separado de lo genérico/reusable (cliente de datos, motor de matchin
 4. **Puerta de aprobación humana #2** — antes de radicar, el humano revisa la recomendación y documentos
    (estado `cotizado` → `aprobado_radicar`).
 5. **Documental** (`documental/`) — lee `~/secop-documentos/<nit>/manifest.json` (documentos de empresa,
-   fuera del repo) y `financiero/` para generar carta de presentación + oferta económica por proceso, y
-   detecta qué documentos de empresa faltan o están vencidos antes de intentar nada. La carga real al
-   formulario de SECOP la hace `sesion-asistida/cargarOferta.ts` (fase 2, ver sección 1) — siempre se
-   detiene antes del clic final de enviar, que lo da un humano.
+   fuera del repo) y `financiero/` para generar carta de presentación, oferta económica y todos los formatos
+   editables del pliego con datos de la empresa. Detecta qué documentos faltan o están vencidos.
+6. **Carga en SECOP** (`sesion-asistida/suscribirYCargar.ts`) — suscribe al proceso ("Acceder a la
+   oportunidad"), sube todos los documentos generados por `documental/`, y **se detiene** antes del paso
+   final. El humano sube los estáticos (CCB, Contraloría, Procuraduría) y hace clic en "Publicar/Radicar".
 6. **Dashboard** (`dashboard/`) — registra procesos detectados y su estado: `por_revisar` → `aprobado_cotizar`
    / `descartado` → `cotizado` → `aprobado_radicar` → `radicado` → `en_evaluacion` → `adjudicado` / `rechazado`.
    Ya construido como mínimo funcional (ver sección 6).
@@ -268,6 +269,47 @@ API SODA: `https://www.datos.gov.co/resource/<dataset-id>.json` con parámetros 
       Postgres en vez de SQLite, `package.json` raíz con build/start, guía paso a paso en
       `docs/despliegue-dashboard.md` (Railway). **Decisión explícita del usuario: sin login por
       ahora**, aunque se recomendó agregar autenticación antes de compartir la URL ampliamente.
+
+## 7. Flujo E2E completo y división de responsabilidades (regla fija)
+
+### Lo que hace el pipeline de agentes (sin intervención humana):
+
+1. **Scout** — detecta procesos candidatos y los registra en el dashboard
+2. **Puerta #1 (humana)** — gerente aprueba o descarta desde el dashboard
+3. **Financiero** — calcula valor a cotizar y notifica al gerente por email
+4. **Puerta #2 (humana)** — gerente aprueba o descarta cotización desde el dashboard
+5. **Documental** — descarga pliego + completa todos los formatos editables del proceso con datos de la empresa:
+   - Carta de Presentación
+   - Formulario de Presupuesto / Oferta Económica
+   - Formato de Seguridad Social
+   - Pacto de Transparencia / Integridad
+   - Hoja de Vida del personal propuesto
+   - Formato de Experiencia (cuando haya contratos en RUP)
+   - Cualquier otro formato/plantilla que el pliego pida
+6. **`suscribirYCargar.ts`** — suscribe al proceso en SECOP II y sube todos los documentos generados en el paso anterior
+7. **PAUSA obligatoria** — `esperarConfirmacionHumana`. El pipeline NUNCA avanza más allá de aquí.
+
+### Lo que hace el humano (después de que el pipeline se detiene):
+
+- Sube los documentos estáticos con vigencia mínima de 30 días:
+  - **CCB** (Cámara de Comercio)
+  - **Contraloría** (BOPM)
+  - **Procuraduría**
+- Revisa que todos los documentos estén correctamente cargados en SECOP II
+- Hace clic en **"Publicar" / "Radicar"** — este paso es **siempre manual, sin excepción**
+
+### Por qué esta división:
+
+- Los documentos con vigencia (CCB, Contraloría, Procuraduría) los sube el humano porque él verifica que estén vigentes al momento de radicar — el agente no puede obtenerlos ni garantizar su validez.
+- El clic de publicar es siempre manual porque es una decisión contractual vinculante.
+
+### En `suscribirYCargar.ts`:
+
+- El array `DOCUMENTOS` incluye **solo** los archivos generados por el agente documental.
+- El script pausa con `esperarConfirmacionHumana` tras subir sus documentos para que el humano agregue los estáticos y publique en la misma sesión de Chrome.
+- El script **nunca** hace clic en "Publicar", "Radicar", "Enviar oferta" ni ningún equivalente.
+
+---
 
 Seguir el orden de prioridad indicado por el usuario en cada sesión, no avanzar de fase sin que se pida.
 

@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "build": "npm install --prefix dashboard/frontend && npm run build --prefix dashboard/frontend && rm -rf dashboard/backend/public && cp -r dashboard/frontend/dist dashboard/backend/public && npm install --prefix dashboard/backend && npm run build --prefix dashboard/backend && npx --prefix dashboard/backend prisma generate --schema=dashboard/backend/prisma/schema.prisma",
-    "start": "npx --prefix dashboard/backend prisma db push --schema=dashboard/backend/prisma/schema.prisma && node dashboard/backend/dist/server.js"
+    "start": "npx --prefix dashboard/backend prisma db push --schema=dashboard/backend/prisma/schema.prisma && node dashboard/backend/dist/server.js",
+    "orquestador": "npx tsx orquestador/src/index.ts",
+    "scout": "npx tsx scout/src/index.ts"
   }
 }

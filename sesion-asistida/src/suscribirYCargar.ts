@@ -2,14 +2,15 @@
  * suscribirYCargar.ts
  *
  * 1. Abre la sesión autenticada de SECOP II
- * 2. Navega al proceso CO1.REQ.10558278
+ * 2. Navega al proceso indicado por el orquestador (env PROCESO_URL / PROCESO_ID)
  * 3. Hace clic en "Crear Oferta" / "Manifestar Interés"
- * 4. Sube los documentos disponibles uno a uno
+ * 4. Sube los documentos generados en ~/secop-documentos/{nit}/generados/{idProceso}/
  * 5. PARA antes de publicar — el humano revisa y envía manualmente
  *
  * NUNCA hace clic en "Enviar Oferta" / "Publicar" / "Radicar".
  */
 
+import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
@@ -20,34 +21,52 @@ import { esperarConfirmacionHumana } from "./esperarHumano.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.loadEnvFile?.(path.join(__dirname, "..", "..", "dashboard", "backend", ".env"));
 
-// ── Configuración del proceso ──────────────────────────────────────────────
-const URL_PROCESO =
-  "https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index?noticeUID=CO1.NTC.10418579";
+// Red de seguridad: SECOP II es ASP.NET WebForms y algunos clics disparan un postback de
+// página completa que destruye el execution context de Playwright a mitad de una consulta
+// al DOM. El loop de subida de documentos ya está protegido puntualmente; esto cubre
+// cualquier otro punto del script (volcarBotones, clicPorTexto, etc.) con el mismo riesgo,
+// para terminar con un mensaje claro en vez de un stack trace crudo sin contexto.
+process.on("unhandledRejection", (err) => {
+  console.error("\n✗ Error no manejado:", (err as Error)?.message ?? err);
+  console.error("  Probable postback/navegación de SECOP a mitad de una operación.");
+  console.error("  La ventana de Chrome puede seguir abierta con la sesión activa — revisa el estado ahí.");
+  process.exit(1);
+});
+
+// ── Configuración del proceso (inyectada por el orquestador vía env) ──────
 const NIT = "900520676-4";
-const ID_PROCESO = "CO1.REQ.10558278";
-const VALOR_OFERTA = 100_385_607; // valor aprobado en dashboard (puerta #2) y CHECKLIST_OFERTA.txt
+const URL_PROCESO = process.env.PROCESO_URL ?? "";
+const ID_PROCESO = process.env.PROCESO_ID ?? "";
+const VALOR_OFERTA = Number(process.env.PROCESO_PRESUPUESTO ?? 0); // valor aprobado en dashboard (puerta #2)
+
+if (!URL_PROCESO || !ID_PROCESO) {
+  console.error(
+    "Faltan PROCESO_URL / PROCESO_ID. Este script lo invoca el orquestador; para correrlo a mano:\n" +
+      '  PROCESO_ID=CO1.REQ.xxx PROCESO_URL="https://community.secop.gov.co/..." PROCESO_PRESUPUESTO=0 npx tsx sesion-asistida/src/suscribirYCargar.ts'
+  );
+  process.exit(1);
+}
 
 const GENERADOS = path.join(os.homedir(), "secop-documentos", NIT, "generados", ID_PROCESO);
 
-// Archivos a subir (en orden de prioridad)
-const DOCUMENTOS: Array<{ etiqueta: string; archivo: string }> = [
-  {
-    etiqueta: "Carta de Presentación",
-    archivo: path.join(GENERADOS, "Formato 1 - Carta de Presentación - DILIGENCIADO.docx"),
-  },
-  {
-    etiqueta: "Formulario de Presupuesto",
-    archivo: path.join(GENERADOS, "Formulario 1 Presupuesto Interventoria - DILIGENCIADO.xlsx"),
-  },
-  {
-    etiqueta: "Seguridad Social",
-    archivo: path.join(GENERADOS, "Formato 4 - Seguridad Social - DILIGENCIADO.docx"),
-  },
-  {
-    etiqueta: "Pacto de Transparencia",
-    archivo: path.join(GENERADOS, "Anexo 1 - Pacto de Transparencia - DILIGENCIADO.docx"),
-  },
-];
+// Archivos a subir: todos los diligenciados presentes en la carpeta del proceso
+const DOCUMENTOS: Array<{ etiqueta: string; archivo: string }> = fs.existsSync(GENERADOS)
+  ? fs
+      .readdirSync(GENERADOS)
+      .filter((f) => !f.startsWith(".") && /\.(docx|xlsx|pdf)$/i.test(f))
+      .sort()
+      .map((f) => ({
+        etiqueta: f.replace(/\.(docx|xlsx|pdf)$/i, ""),
+        archivo: path.join(GENERADOS, f),
+      }))
+  : [];
+
+if (DOCUMENTOS.length === 0) {
+  console.error(
+    `No hay documentos generados en ${GENERADOS} — corre el agente documental (diligenciarPlantillas) antes de suscribir.`
+  );
+  process.exit(1);
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -306,40 +325,49 @@ async function clicPorTexto(page: Page, textos: string[]): Promise<boolean> {
   for (const doc of DOCUMENTOS) {
     console.log(`\n  Intentando subir: ${doc.etiqueta}`);
 
-    // Estrategia 1: interceptar el file chooser nativo que abre el botón "Adjuntar"
-    // Se configura el listener ANTES de hacer clic para no perder el evento.
-    let subidoConFileChooser = false;
+    // Todo el intento por-documento va envuelto: SECOP II es una app ASP.NET WebForms y
+    // el clic en "Adjuntar" a veces dispara un postback de página completa (no un AJAX de
+    // UpdatePanel) que destruye el execution context de Playwright a mitad de la operación
+    // ("Execution context was destroyed, most likely because of a navigation"). Sin este
+    // try/catch esa excepción no capturada tumbaba todo el proceso Node — ahora se registra
+    // como fallo de ESE documento y el loop continúa con el siguiente.
     try {
-      const [fileChooser] = await Promise.all([
-        page.waitForEvent("filechooser", { timeout: 8_000 }),
-        clicPorTexto(page, [
-          "Agregar documento",
-          "Adjuntar",
-          "Adjuntar documento",
-          "Cargar documento",
-          "Agregar archivo",
-          "Upload",
-        ]),
-      ]);
-      if (fileChooser) {
-        await fileChooser.setFiles(doc.archivo);
-        await pausar(2_000);
-        const guardado = await clicPorTexto(page, ["Guardar", "Guardar y cerrar", "Confirmar", "Aceptar", "OK"]);
-        if (guardado) await pausar(3_000);
-        console.log(`  ✓ Subido con fileChooser: ${doc.etiqueta}`);
-        totalSubidos++;
-        subidoConFileChooser = true;
+      // Estrategia 1: interceptar el file chooser nativo que abre el botón "Adjuntar"
+      // Se configura el listener ANTES de hacer clic para no perder el evento.
+      let subidoConFileChooser = false;
+      try {
+        const [fileChooser] = await Promise.all([
+          page.waitForEvent("filechooser", { timeout: 8_000 }),
+          clicPorTexto(page, [
+            "Agregar documento",
+            "Adjuntar",
+            "Adjuntar documento",
+            "Cargar documento",
+            "Agregar archivo",
+            "Upload",
+          ]),
+        ]);
+        if (fileChooser) {
+          await fileChooser.setFiles(doc.archivo);
+          await pausar(2_000);
+          const guardado = await clicPorTexto(page, ["Guardar", "Guardar y cerrar", "Confirmar", "Aceptar", "OK"]);
+          if (guardado) await pausar(3_000);
+          console.log(`  ✓ Subido con fileChooser: ${doc.etiqueta}`);
+          totalSubidos++;
+          subidoConFileChooser = true;
+        }
+      } catch {
+        // El fileChooser no apareció en 8s — o el clic disparó un postback en vez de un
+        // file chooser. Esperar a que la página se estabilice antes de seguir con la
+        // estrategia 2, para no consultar el DOM a mitad de la navegación.
+        await page.waitForLoadState("domcontentloaded", { timeout: 10_000 }).catch(() => {});
       }
-    } catch {
-      // El fileChooser no apareció en 8s — intentar con input[type='file'] directo
-    }
 
-    if (!subidoConFileChooser) {
-      // Estrategia 2: buscar input[type='file'] visible u oculto y usar setInputFiles
-      const fileInputs = await page.$$("input[type='file']");
-      console.log(`    file inputs encontrados: ${fileInputs.length}`);
-      if (fileInputs.length > 0) {
-        try {
+      if (!subidoConFileChooser) {
+        // Estrategia 2: buscar input[type='file'] visible u oculto y usar setInputFiles
+        const fileInputs = await page.$$("input[type='file']");
+        console.log(`    file inputs encontrados: ${fileInputs.length}`);
+        if (fileInputs.length > 0) {
           // Forzar visibilidad si está oculto (SECOP II a veces oculta el input real)
           await fileInputs[0].evaluate((el) => {
             (el as HTMLElement).style.display = "block";
@@ -351,18 +379,19 @@ async function clicPorTexto(page: Page, textos: string[]): Promise<boolean> {
           if (guardado) await pausar(3_000);
           console.log(`  ✓ Subido con setInputFiles: ${doc.etiqueta}`);
           totalSubidos++;
-        } catch (err) {
-          console.error(`  ✗ Error setInputFiles: ${(err as Error).message.slice(0, 120)}`);
+        } else {
+          console.log(`  ⚠ Sin file input para ${doc.etiqueta}`);
         }
-      } else {
-        console.log(`  ⚠ Sin file input para ${doc.etiqueta}`);
       }
+    } catch (err) {
+      console.error(`  ✗ Error subiendo ${doc.etiqueta}: ${(err as Error).message.slice(0, 150)}`);
+      console.error(`    (probable postback de SECOP a mitad del intento — continúa con el siguiente documento)`);
     }
   }
 
   if (totalSubidos < DOCUMENTOS.length) {
     console.log(`\n  Subidos automáticamente: ${totalSubidos}/${DOCUMENTOS.length}`);
-    console.log("  Archivos en ~/secop-documentos/900520676-4/generados/CO1.REQ.10558278/:");
+    console.log(`  Archivos en ${GENERADOS}/:`);
     DOCUMENTOS.forEach((d, i) => {
       const subido = i < totalSubidos ? "✓" : "✗";
       console.log(`    ${subido} ${d.etiqueta}`);

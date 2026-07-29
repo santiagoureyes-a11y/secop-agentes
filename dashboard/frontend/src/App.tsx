@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useProcesos } from "./features/procesos/hooks/useProcesos";
+import { useProcesos, useEjecutarScout } from "./features/procesos/hooks/useProcesos";
 import { ProcesosTable } from "./features/procesos/components/ProcesosTable";
 import { ProcesoDetail } from "./features/procesos/components/ProcesoDetail";
 
@@ -20,6 +20,7 @@ function diasParaCierre(fecha: string | null): number | null {
 function App() {
   const { data: procesos = [], isLoading, error } = useProcesos();
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
+  const scout = useEjecutarScout();
 
   const activos = procesos.filter((p) => p.estado !== "descartado" && p.estado !== "rechazado");
   const valorTotal = activos.reduce((acc, p) => acc + (p.valorBase ?? 0), 0);
@@ -47,12 +48,56 @@ function App() {
               <p className="text-xs text-slate-400">Agente SECOP II · Panel de procesos</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Activo
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => scout.mutate()}
+              disabled={scout.isPending}
+              className="flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {scout.isPending ? (
+                <>
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                  Buscando procesos...
+                </>
+              ) : (
+                <>🔍 Scout</>
+              )}
+            </button>
+            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Activo
+            </div>
           </div>
         </div>
       </header>
+
+      {/* Resultado del Scout */}
+      {scout.isSuccess && (
+        <div className="mx-auto max-w-7xl px-6 pt-4">
+          <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <span>
+              🔍 Scout: {scout.data.nuevos} proceso{scout.data.nuevos === 1 ? "" : "s"} nuevo
+              {scout.data.nuevos === 1 ? "" : "s"} · {scout.data.duplicados} ya estaban en el tablero
+              {scout.data.sinCupo > 0 ? ` · ${scout.data.sinCupo} sin cupo disponible` : ""}
+              {" de "}
+              {scout.data.encontrados} encontrados
+            </span>
+            <button onClick={() => scout.reset()} className="text-emerald-600 hover:text-emerald-800" aria-label="Cerrar">
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      {scout.isError && (
+        <div className="mx-auto max-w-7xl px-6 pt-4">
+          <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span>✗ Scout falló: {(scout.error as Error).message}</span>
+            <button onClick={() => scout.reset()} className="text-red-600 hover:text-red-800" aria-label="Cerrar">
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto max-w-7xl px-6 py-8 space-y-6">
         {/* Stats */}

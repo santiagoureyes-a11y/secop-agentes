@@ -32,3 +32,17 @@ export function actualizarEstadoProceso(id: string, estado: EstadoProceso): Prom
     body: JSON.stringify({ estado }),
   }).then(manejarRespuesta<Proceso>);
 }
+
+export interface ResultadoScout {
+  encontrados: number;
+  nuevos: number;
+  duplicados: number;
+  sinCupo: number;
+  cupoMaximo: number;
+  cupoDisponible: number;
+  procesosNuevos: Array<{ idProceso: string; entidad: string; valorBase: number | null }>;
+}
+
+export function ejecutarScout(): Promise<ResultadoScout> {
+  return fetch(`${API_URL}/api/scout/ejecutar`, { method: "POST" }).then(manejarRespuesta<ResultadoScout>);
+}

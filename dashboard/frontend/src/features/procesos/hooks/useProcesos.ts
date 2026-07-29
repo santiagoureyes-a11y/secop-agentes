@@ -32,3 +32,11 @@ export function useActualizarEstado() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: PROCESOS_KEY }),
   });
 }
+
+export function useEjecutarScout() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: procesosApi.ejecutarScout,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROCESOS_KEY }),
+  });
+}

@@ -89,15 +89,68 @@ def reemplazo_por_parrafo(doc, reemplazos: dict) -> int:
     return aplicados
 
 
+def _insertar_imagen_antes(p, firma: dict) -> None:
+    previo = p.insert_paragraph_before()
+    run = previo.add_run()
+    run.add_picture(firma["imagen"], width=Cm(firma.get("anchoCm", 5)))
+
+
+def reemplazo_regex(doc, patrones: list) -> tuple:
+    """Pasada 3: rellena blancos de subrayado ("Dirección: ______") ancorados a una
+    etiqueta o frase conocida — a diferencia de las pasadas 1/2, que reemplazan un
+    placeholder literal entre corchetes, esto usa regex porque el largo de la línea de
+    subrayado varía entre plantillas. Cada patrón trae SOLO los grupos de captura que se
+    van a rellenar; cualquier otro blanco en la misma frase que no esté en el patrón queda
+    fuera del match y por tanto intacto — así nunca se inventa un dato en un blanco que no
+    se pudo mapear con certeza (ej. ciudad de expedición de una cédula).
+    Se acumulan todos los patrones sobre el mismo texto del párrafo antes de escribirlo una
+    sola vez, para que dos patrones que caen en el mismo párrafo no se pisen entre sí.
+    """
+    aplicados = 0
+    encontrados = [False] * len(patrones)
+    for p in parrafos_de(doc):
+        original = p.text
+        texto = original
+        for i, patron in enumerate(patrones):
+            nuevo, n = re.subn(patron["regex"], patron["reemplazo"], texto, flags=re.IGNORECASE)
+            if n > 0:
+                texto = nuevo
+                aplicados += n
+                encontrados[i] = True
+        if texto != original and p.runs:
+            p.runs[0].text = texto
+            for run in p.runs[1:]:
+                run.text = ""
+    no_encontrados = [
+        patrones[i].get("etiqueta", patrones[i]["regex"])
+        for i, ok in enumerate(encontrados)
+        if not ok
+    ]
+    return aplicados, no_encontrados
+
+
 def insertar_firma(doc, firma: dict) -> bool:
     """Inserta la imagen de la firma en un párrafo nuevo antes de la línea ancla."""
     ancla = firma["ancla"]
+
+    # Intento 1: substring literal del ancla configurada (comportamiento original).
     for p in parrafos_de(doc):
         if ancla.lower() in p.text.lower():
-            previo = p.insert_paragraph_before()
-            run = previo.add_run()
-            run.add_picture(firma["imagen"], width=Cm(firma.get("anchoCm", 5)))
+            _insertar_imagen_antes(p, firma)
             return True
+
+    # Intento 2 (fallback): cada entidad redacta distinto ("FIRMA OFERENTE", "Firma del
+    # Represente Legal"...) así que si el ancla exacta no aparece, se busca "firma" como
+    # palabra completa (evita falsos positivos como "firmantes") y se usa la ÚLTIMA
+    # aparición — el bloque de firma siempre está al final del documento.
+    ultimo = None
+    for p in parrafos_de(doc):
+        if re.search(r"\bfirma\b", p.text, re.IGNORECASE):
+            ultimo = p
+    if ultimo is not None:
+        _insertar_imagen_antes(ultimo, firma)
+        return True
+
     return False
 
 
@@ -122,6 +175,11 @@ def main():
     doc = docx.Document(str(salida))
     aplicados_parrafo = reemplazo_por_parrafo(doc, reemplazos)
 
+    aplicados_regex = 0
+    patrones_regex_sin_match = []
+    if spec.get("reemplazosRegex"):
+        aplicados_regex, patrones_regex_sin_match = reemplazo_regex(doc, spec["reemplazosRegex"])
+
     firma_insertada = False
     if spec.get("firma"):
         firma_insertada = insertar_firma(doc, spec["firma"])
@@ -135,6 +193,8 @@ def main():
                 "salida": str(salida),
                 "reemplazosXml": aplicados_xml,
                 "reemplazosParrafo": aplicados_parrafo,
+                "reemplazosRegex": aplicados_regex,
+                "patronesRegexSinMatch": patrones_regex_sin_match,
                 "firmaInsertada": firma_insertada,
                 "pendientes": placeholders_pendientes(doc_final),
             },

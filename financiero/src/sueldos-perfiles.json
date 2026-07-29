@@ -1,0 +1,18 @@
+{
+  "_nota": "Sueldos básicos mensuales por perfil profesional para costear el personal mínimo que exige cada pliego. VALORES INICIALES derivados de la plantilla interna — PENDIENTES DE VALIDACIÓN por el gerente (2026-07-15). Editar aquí, no en el código. El matcher compara las 'claves' contra el CARGO del pliego (sin tildes, minúsculas); gana la primera coincidencia en orden de lista.",
+  "perfiles": [
+    { "perfil": "Director", "claves": ["director"], "sueldoBasicoMes": 6000000 },
+    { "perfil": "Especialista", "claves": ["especialista", "especializac"], "sueldoBasicoMes": 5000000 },
+    { "perfil": "Interventor residente", "claves": ["residente"], "sueldoBasicoMes": 4500000 },
+    { "perfil": "Ingeniero", "claves": ["ingenier"], "sueldoBasicoMes": 4500000 },
+    { "perfil": "Topógrafo", "claves": ["topograf"], "sueldoBasicoMes": 4500000 },
+    { "perfil": "Profesional SST", "claves": ["sst", "seguridad y salud"], "sueldoBasicoMes": 3300000 },
+    { "perfil": "Arquitecto", "claves": ["arquitect"], "sueldoBasicoMes": 4500000 },
+    { "perfil": "Contador", "claves": ["contador", "contable"], "sueldoBasicoMes": 4000000 },
+    { "perfil": "Abogado", "claves": ["abogad", "juridic"], "sueldoBasicoMes": 4000000 },
+    { "perfil": "Técnico / Tecnólogo", "claves": ["tecnolog", "tecnico"], "sueldoBasicoMes": 3000000 },
+    { "perfil": "Auxiliar / Apoyo", "claves": ["auxiliar", "apoyo"], "sueldoBasicoMes": 2500000 },
+    { "perfil": "Profesional (genérico)", "claves": ["profesional"], "sueldoBasicoMes": 4000000 }
+  ],
+  "fallbackSueldoBasicoMes": 4500000
+}

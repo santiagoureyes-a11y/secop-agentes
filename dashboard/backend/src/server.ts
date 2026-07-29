@@ -7,6 +7,7 @@ import cors from "cors";
 import { procesosRouter } from "./modules/procesos/procesos.routes.js";
 import { empresasRouter } from "./modules/empresas/empresas.routes.js";
 import { documentosRouter } from "./modules/documentos/documentos.routes.js";
+import { scoutRouter } from "./modules/scout/scout.routes.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use("/api/procesos", procesosRouter);
 app.use("/api/empresas", empresasRouter);
 app.use("/api/documentos", documentosRouter);
+app.use("/api/scout", scoutRouter);
 
 // En producción, el build del frontend se copia a "public" (ver root package.json) y este
 // mismo servicio lo sirve — evita desplegar/mantener dos servicios separados para un
